@@ -6,9 +6,10 @@ type UserRole = "patient" | "provider" | "admin";
 
 type LoginScreenProps = {
   onLogin: (role: UserRole, id: string) => void;
+  onBackHome?: () => void;
 };
 
-export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
+export const LoginScreen = ({ onLogin, onBackHome }: LoginScreenProps) => {
   const [role, setRole] = useState<UserRole>("patient");
   const [id, setId] = useState("");
 
@@ -25,6 +26,15 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
         </div>
         <h2 className="text-2xl font-bold text-center text-slate-900">CMRS Portal</h2>
         <p className="text-center text-slate-500 mt-1">Unified Medical Records Login</p>
+        {onBackHome && (
+          <button
+            type="button"
+            onClick={onBackHome}
+            className="mt-4 w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+          >
+            Back to Home
+          </button>
+        )}
 
         <form onSubmit={handleLogin} className="mt-8 space-y-4">
           <div className="space-y-2">
