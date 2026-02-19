@@ -13,7 +13,11 @@ import {
   Users,
 } from "../ui/icons";
 
-export default function DashboardDemo() {
+type DashboardDemoProps = {
+  onBackHome?: () => void;
+};
+
+export default function DashboardDemo({ onBackHome }: DashboardDemoProps) {
   type UserRole = "patient" | "provider" | "admin";
   type User = { role: UserRole; name: string };
 
@@ -28,7 +32,7 @@ export default function DashboardDemo() {
   };
 
   if (!user) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen onLogin={handleLogin} onBackHome={onBackHome} />;
   }
 
   return (
