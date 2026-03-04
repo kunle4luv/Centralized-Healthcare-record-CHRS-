@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LoginScreen } from "../auth/login";
 import { AdminDashboard } from "./adminDashboard";
 import { PatientDashboard } from "./patientDashboard";
-import { ProviderDashboard } from "./provider";
+import { ProviderDashboard } from "./patients";
 import {
   Activity,
   Bell,
