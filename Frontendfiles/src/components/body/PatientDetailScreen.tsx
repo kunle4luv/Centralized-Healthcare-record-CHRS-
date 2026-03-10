@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, Database, Download, Eye } from "lucide-react";
+import { Activity, Download, Eye } from "lucide-react";
 import { fetchPatientById, type Patient, type RecordType, type Visit } from "../../api/client";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 const RECORD_TABS: { id: RecordType | "all"; label: string }[] = [
   { id: "all", label: "All Records" },

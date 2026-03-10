@@ -1,7 +1,7 @@
 import { AdminDashboard } from "./adminDashboard";
 import { PatientDashboard } from "./patientDashboard";
 import { ProviderDashboardEnhanced } from "./ProviderDashboardEnhanced";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 export function DashboardHome() {
   const { user } = useAuth();

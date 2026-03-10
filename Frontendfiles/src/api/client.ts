@@ -3,7 +3,22 @@
  * Uses mock data when VITE_API_URL is unset or backend is unavailable.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// Helper to get auth token
+const getAuthToken = (): string | null => {
+  return localStorage.getItem("chrs_token");
+};
+
+// Helper for auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 export type UserRole = "patient" | "provider" | "admin";
 
@@ -57,7 +72,9 @@ export async function fetchPatient(params: {
       const search = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v))
       ).toString();
-      const res = await fetch(`${API_BASE}/patients?${search}`);
+      const res = await fetch(`${API_BASE}/api/patients?${search}`, {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) return null;
       return res.json();
     } catch {
@@ -70,7 +87,9 @@ export async function fetchPatient(params: {
 export async function fetchPatientById(id: string): Promise<Patient | null> {
   if (API_BASE) {
     try {
-      const res = await fetch(`${API_BASE}/patients/${id}`);
+      const res = await fetch(`${API_BASE}/api/patients/${id}`, {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) return null;
       return res.json();
     } catch {
@@ -83,8 +102,10 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
 export async function fetchPatients(search?: string): Promise<Patient[]> {
   if (API_BASE) {
     try {
-      const url = search ? `${API_BASE}/patients?search=${encodeURIComponent(search)}` : `${API_BASE}/patients`;
-      const res = await fetch(url);
+      const url = search ? `${API_BASE}/api/patients?search=${encodeURIComponent(search)}` : `${API_BASE}/api/patients`;
+      const res = await fetch(url, {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) return [];
       return res.json();
     } catch {
@@ -97,9 +118,9 @@ export async function fetchPatients(search?: string): Promise<Patient[]> {
 export async function createPatient(data: Partial<Patient>): Promise<Patient | null> {
   if (API_BASE) {
     try {
-      const res = await fetch(`${API_BASE}/patients`, {
+      const res = await fetch(`${API_BASE}/api/patients`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       if (!res.ok) return null;
@@ -114,9 +135,9 @@ export async function createPatient(data: Partial<Patient>): Promise<Patient | n
 export async function createRecord(patientId: string, record: Partial<Visit>): Promise<Visit | null> {
   if (API_BASE) {
     try {
-      const res = await fetch(`${API_BASE}/patients/${patientId}/records`, {
+      const res = await fetch(`${API_BASE}/api/patients/${patientId}/records`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(record),
       });
       if (!res.ok) return null;
@@ -131,7 +152,9 @@ export async function createRecord(patientId: string, record: Partial<Visit>): P
 export async function fetchNotifications(): Promise<Notification[]> {
   if (API_BASE) {
     try {
-      const res = await fetch(`${API_BASE}/notifications`);
+      const res = await fetch(`${API_BASE}/api/notifications`, {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) return [];
       return res.json();
     } catch {

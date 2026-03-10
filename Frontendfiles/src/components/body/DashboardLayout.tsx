@@ -11,11 +11,22 @@ import {
   User,
   Users,
 } from "../ui/icons";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 export function DashboardLayout() {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, loading } = useAuth();
   const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

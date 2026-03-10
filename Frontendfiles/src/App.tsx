@@ -15,7 +15,7 @@ import { HospitalsScreen } from "./components/body/HospitalsScreen";
 import { HospitalDoctorsScreen } from "./components/body/HospitalDoctorsScreen";
 import { RequestAccessScreen } from "./components/body/RequestAccessScreen";
 import { LoginScreen } from "./components/auth/login";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 
 function App() {
   return (
