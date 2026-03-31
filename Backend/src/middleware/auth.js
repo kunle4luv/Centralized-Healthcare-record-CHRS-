@@ -37,6 +37,12 @@ const optionalAuth = async (req, res, next) => {
     
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
+      
+      // Skip verification if JWT_SECRET is not set
+      if (!process.env.JWT_SECRET) {
+        return next();
+      }
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select('-password');
       if (user) {

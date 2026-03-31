@@ -24,6 +24,7 @@ export type UserRole = "patient" | "provider" | "admin";
 
 export interface Patient {
   id: string;
+  _id?: string;
   nin?: string | null;
   phoneNumber: string;
   email?: string | null;
@@ -97,6 +98,23 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
     }
   }
   return getMockPatientById(id);
+}
+
+// Search patient by NIN (returns single patient)
+export async function searchPatientByNIN(nin: string): Promise<Patient | null> {
+  if (API_BASE) {
+    try {
+      const res = await fetch(`${API_BASE}/api/patients/search?nin=${encodeURIComponent(nin)}`, {
+        headers: getAuthHeaders()
+      });
+     
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
+  }
+  return getMockPatient();
 }
 
 export async function fetchPatients(search?: string): Promise<Patient[]> {

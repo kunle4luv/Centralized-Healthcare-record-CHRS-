@@ -350,26 +350,15 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/patients/:id - Fetch patient by ID
-router.get('/:id', optionalAuth, async (req, res) => {
-  try {
-    const patient = await Patient.findById(req.params.id);
-    
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-
-    res.json(patient);
-  } catch (error) {
-    console.error('Error fetching patient:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // GET /api/patients/search - Search patient by nin, phone, or email
+// NOTE: This route must be defined BEFORE /:id to avoid matching 'search' as an id
 router.get('/search', optionalAuth, async (req, res) => {
   try {
     const { nin, phone, email } = req.query;
+    
+    if (!nin && !phone && !email) {
+      return res.status(400).json({ message: 'At least one search parameter (nin, phone, or email) is required' });
+    }
     
     let query = {};
     if (nin) query.nin = nin;
@@ -385,6 +374,22 @@ router.get('/search', optionalAuth, async (req, res) => {
     res.json(patient);
   } catch (error) {
     console.error('Error searching patient:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// GET /api/patients/:id - Fetch patient by ID
+router.get('/:id', optionalAuth, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+    
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    res.json(patient);
+  } catch (error) {
+    console.error('Error fetching patient:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

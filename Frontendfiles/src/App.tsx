@@ -16,6 +16,7 @@ import { HospitalDoctorsScreen } from "./components/body/HospitalDoctorsScreen";
 import { RequestAccessScreen } from "./components/body/RequestAccessScreen";
 import { LoginScreen } from "./components/auth/login";
 import { useAuth } from "./context/useAuth";
+import { HospitalADashboard, HospitalBDashboard } from "./components/body/HospitalDashboard";
 
 function App() {
   return (
@@ -39,6 +40,10 @@ function App() {
             <Route path="hospitals/:hospitalId/doctors" element={<HospitalDoctorsScreen />} />
             <Route path="request-access" element={<RequestAccessScreen />} />
           </Route>
+
+          {/* Standalone Hospital Dashboards with unique layouts */}
+          <Route path="/hospital-a" element={<HospitalADashboard />} />
+          <Route path="/hospital-b" element={<HospitalBDashboard />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
