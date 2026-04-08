@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Search, PlusCircle, Shield, Activity } from "../ui/icons";
-import { createPatient, searchPatientByNIN, type Patient } from "../../api/client";
+import { createPatient, searchPatientByNIN, createRecord, fetchPatientById, type Patient, type RecordType } from "../../api/client";
 
 interface HospitalDashboardProps {
   hospitalName: string;
@@ -37,6 +36,15 @@ export function HospitalBDashboard() {
   );
 }
 
+// Record types from AddRecordScreen
+const RECORD_TYPES: { id: RecordType; label: string }[] = [
+  { id: "diagnosis", label: "Diagnosis / Checkup" },
+  { id: "lab", label: "Lab Results" },
+  { id: "prescription", label: "Prescription" },
+  { id: "imaging", label: "Imaging (X-ray, MRI, etc.)" },
+  { id: "procedure", label: "Procedure" },
+];
+
 function HospitalDashboardWrapper({ 
   hospitalName, 
   primaryColor, 
@@ -44,10 +52,12 @@ function HospitalDashboardWrapper({
   bgGradient,
   buttonGradient
 }: HospitalDashboardProps) {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"search" | "register">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "register" | "patient">("search");
+  const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
+  const [showAddRecord, setShowAddRecord] = useState(false);
+  
+  // Search state
   const [searchNIN, setSearchNIN] = useState("");
-  const [searchResult, setSearchResult] = useState<Patient | null>(null);
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
   
@@ -66,18 +76,33 @@ function HospitalDashboardWrapper({
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
 
+  // Add Record form state
+  const [recordForm, setRecordForm] = useState({
+    diagnosis: "",
+    notes: "",
+    bloodPressure: "",
+    temperature: "",
+    heartRate: "",
+    weight: "",
+    labResults: "",
+    prescriptions: "",
+    imagingFindings: "",
+  });
+  const [recordType, setRecordType] = useState<RecordType>("diagnosis");
+  const [savingRecord, setSavingRecord] = useState(false);
+
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); 
     if (!searchNIN.trim()) return;
     
     setSearching(true);
     setSearchError("");
-    setSearchResult(null);
     
     try {
       const result = await searchPatientByNIN(searchNIN.trim());
       if (result) {
-        setSearchResult(result);
+        setViewingPatient(result);
+        setActiveTab("patient");
       } else {
         setSearchError("No patient found with this NIN. Please register the patient first.");
       }
@@ -134,6 +159,321 @@ function HospitalDashboardWrapper({
     }
   };
 
+  const handleAddRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!viewingPatient) return;
+    
+    setSavingRecord(true);
+    try {
+      const patientId = viewingPatient._id || viewingPatient.id;
+      const record = await createRecord(patientId, {
+        date: new Date().toISOString().slice(0, 10),
+        hospital: hospitalName,
+        doctor: "Doctor on Duty",
+        diagnosis: recordForm.diagnosis,
+        notes: recordForm.notes,
+        status: "Recorded",
+        recordType,
+        labResults: recordForm.labResults ? Object.fromEntries(
+          recordForm.labResults
+            .split("\n")
+            .filter(Boolean)
+            .map((l) => {
+              const idx = l.indexOf(":");
+              return idx >= 0 ? [l.slice(0, idx).trim(), l.slice(idx + 1).trim()] : null;
+            })
+            .filter((a): a is [string, string] => !!a && a[0].length > 0)
+        ) : undefined,
+        prescriptions: recordForm.prescriptions ? recordForm.prescriptions.split("\n").filter(Boolean).map((line) => {
+          const [drug, dosage] = line.split(":").map((s) => s.trim());
+          return { drug: drug || "", dosage: dosage || "" };
+        }) : undefined,
+        imagingFindings: recordForm.imagingFindings || undefined,
+        vitals: {
+          bloodPressure: recordForm.bloodPressure || undefined,
+          temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
+          heartRate: recordForm.heartRate ? Number(recordForm.heartRate) : undefined,
+          weight: recordForm.weight ? Number(recordForm.weight) : undefined,
+        },
+      });
+      
+      if (record) {
+        // Refresh patient data to show new record
+        const updatedPatient = await fetchPatientById(patientId);
+        if (updatedPatient) {
+          setViewingPatient(updatedPatient);
+        }
+        setShowAddRecord(false);
+        setRecordForm({
+          diagnosis: "",
+          notes: "",
+          bloodPressure: "",
+          temperature: "",
+          heartRate: "",
+          weight: "",
+          labResults: "",
+          prescriptions: "",
+          imagingFindings: "",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding record:", error);
+    } finally {
+      setSavingRecord(false);
+    }
+  };
+
+  const handleBackToSearch = () => {
+    setViewingPatient(null);
+    setActiveTab("search");
+    setShowAddRecord(false);
+  };
+
+  // Render patient detail view
+  if (activeTab === "patient" && viewingPatient) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {/* Header */}
+        <header className={`bg-gradient-to-r ${bgGradient} text-white shadow-lg`}>
+          <div className="max-w-6xl mx-auto px-6 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">{hospitalName}</h1>
+                <p className="text-white/80 text-sm mt-1">Patient Record</p>
+              </div>
+              <button
+                onClick={handleBackToSearch}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition"
+              >
+                ← Back to Search
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          {/* Patient Info Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`h-16 w-16 rounded-full bg-${accentColor}-100 flex items-center justify-center text-2xl font-bold text-${accentColor}-600`}>
+                  {viewingPatient.firstName?.charAt(0)}{viewingPatient.lastName?.charAt(0)}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">{viewingPatient.firstName} {viewingPatient.lastName}</h2>
+                  <p className="text-slate-500">NIN: {viewingPatient.nin || "Not provided"}</p>
+                  <div className="flex gap-4 mt-1">
+                    <span className="text-sm text-slate-500">📞 {viewingPatient.phoneNumber}</span>
+                    {viewingPatient.email && <span className="text-sm text-slate-500">✉️ {viewingPatient.email}</span>}
+                    {viewingPatient.bloodType && <span className="text-sm text-slate-500">🩸 {viewingPatient.bloodType}</span>}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddRecord(!showAddRecord)}
+                className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${buttonGradient} text-white rounded-xl font-medium transition`}
+              >
+                <PlusCircle className="h-4 w-4" /> Add Record
+              </button>
+            </div>
+          </div>
+
+          {/* Add Record Form (inline) */}
+          {showAddRecord && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">Add Medical Record</h3>
+                <button onClick={() => setShowAddRecord(false)} className="text-slate-400 hover:text-slate-600">
+                  ✕
+                </button>
+              </div>
+              
+              <form onSubmit={handleAddRecord} className="space-y-4">
+                {/* Record Type */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Record Type</label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {RECORD_TYPES.map((rt) => (
+                      <button
+                        key={rt.id}
+                        type="button"
+                        onClick={() => setRecordType(rt.id)}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                          recordType === rt.id
+                            ? `bg-gradient-to-r ${buttonGradient} text-white`
+                            : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {rt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Diagnosis */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {recordType === "diagnosis" ? "Diagnosis / Reason" : recordType === "lab" ? "Test / Procedure" : recordType === "imaging" ? "Imaging Type" : "Title"}
+                  </label>
+                  <input
+                    type="text"
+                    value={recordForm.diagnosis}
+                    onChange={(e) => setRecordForm((f) => ({ ...f, diagnosis: e.target.value }))}
+                    placeholder="e.g. Malaria, Routine Checkup"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-slate-400 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</label>
+                  <textarea
+                    value={recordForm.notes}
+                    onChange={(e) => setRecordForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="Additional notes..."
+                    rows={2}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-slate-400 focus:outline-none"
+                  />
+                </div>
+
+                {/* Vitals */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Vitals (optional)</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                        ♥ BP
+                      </label>
+                      <input
+                        type="text"
+                        value={recordForm.bloodPressure}
+                        onChange={(e) => setRecordForm((f) => ({ ...f, bloodPressure: e.target.value }))}
+                        placeholder="120/80"
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                        ☀ Temp (°C)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={recordForm.temperature}
+                        onChange={(e) => setRecordForm((f) => ({ ...f, temperature: e.target.value }))}
+                        placeholder="36.5"
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                        <Activity className="h-3 w-3" /> HR
+                      </label>
+                      <input
+                        type="number"
+                        value={recordForm.heartRate}
+                        onChange={(e) => setRecordForm((f) => ({ ...f, heartRate: e.target.value }))}
+                        placeholder="72"
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                        ⚖ Weight
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={recordForm.weight}
+                        onChange={(e) => setRecordForm((f) => ({ ...f, weight: e.target.value }))}
+                        placeholder="70"
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    disabled={savingRecord}
+                    className={`px-6 py-2 bg-gradient-to-r ${buttonGradient} text-white rounded-xl font-medium transition disabled:opacity-50`}
+                  >
+                    {savingRecord ? "Saving..." : "Save Record"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRecord(false)}
+                    className="px-6 py-2 border border-slate-200 text-slate-700 rounded-xl font-medium transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Medical Records History */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Medical Records History</h3>
+            {!viewingPatient.recentVisits || viewingPatient.recentVisits.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <p className="text-4xl mb-2 opacity-50">📋</p>
+                <p>No medical records found. Add the first record above.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {viewingPatient.recentVisits.map((visit) => (
+                  <div key={visit.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            visit.recordType === "diagnosis" ? "bg-blue-100 text-blue-700" :
+                            visit.recordType === "lab" ? "bg-purple-100 text-purple-700" :
+                            visit.recordType === "prescription" ? "bg-green-100 text-green-700" :
+                            visit.recordType === "imaging" ? "bg-orange-100 text-orange-700" :
+                            "bg-slate-100 text-slate-700"
+                          }`}>
+                            {visit.recordType}
+                          </span>
+                          <span className="text-sm font-medium text-slate-900">{visit.diagnosis}</span>
+                        </div>
+                        <p className="text-sm text-slate-500">{visit.hospital} • {visit.doctor}</p>
+                        {visit.notes && <p className="text-sm text-slate-600 mt-2">{visit.notes}</p>}
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          visit.status === "Completed" || visit.status === "Recorded" || visit.status === "Treated"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {visit.status}
+                        </span>
+                        <p className="text-xs text-slate-400 mt-1">{visit.date}</p>
+                      </div>
+                    </div>
+                    {/* Vitals display */}
+                    {visit.vitals && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 flex gap-4 text-xs text-slate-500">
+                        {visit.vitals.bloodPressure && <span>BP: {visit.vitals.bloodPressure}</span>}
+                        {visit.vitals.temperature && <span>Temp: {visit.vitals.temperature}°C</span>}
+                        {visit.vitals.heartRate && <span>HR: {visit.vitals.heartRate} bpm</span>}
+                        {visit.vitals.weight && <span>Weight: {visit.vitals.weight} kg</span>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main search/register view
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -146,7 +486,6 @@ function HospitalDashboardWrapper({
             </div>
             <div className="flex items-center gap-4">
               <div className="bg-white/20 backdrop-blur rounded-xl px-4 py-2 text-sm">
-                <span className="text-white/80">System Status:</span>{" "}
                 <span className="font-semibold flex items-center gap-1">
                   <Activity className="h-4 w-4" /> Online
                 </span>
@@ -249,69 +588,9 @@ function HospitalDashboardWrapper({
                 </button>
               </form>
 
-              {/* Search Error */}
               {searchError && (
-                <div className="mt-4 p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
-                  <div className="h-5 w-5 text-rose-500 mt-0.5">⚠️</div>
-                  <div>
-                    <p className="text-rose-700 font-medium">Patient Not Found</p>
-                    <p className="text-rose-600 text-sm">{searchError}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Search Result */}
-              {searchResult && (
-                <div className="mt-6 p-6 bg-gradient-to-r from-slate-50 to-white rounded-2xl border border-slate-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`h-16 w-16 rounded-full bg-${accentColor}-100 flex items-center justify-center text-2xl font-bold text-${accentColor}-600`}>
-                        {searchResult.firstName?.charAt(0)}{searchResult.lastName?.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-slate-900">{searchResult.firstName} {searchResult.lastName}</h3>
-                        <p className="text-slate-500">NIN: {searchResult.nin || "Not provided"}</p>
-                        <div className="flex gap-4 mt-2">
-                          <span className="text-sm text-slate-500">📞 {searchResult.phoneNumber}</span>
-                          {searchResult.email && <span className="text-sm text-slate-500">✉️ {searchResult.email}</span>}
-                          {searchResult.bloodType && <span className="text-sm text-slate-500">🩸 {searchResult.bloodType}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => navigate(`/dashboard/patient/${searchResult._id || searchResult.id}`)}
-                      className={`px-6 py-2 bg-gradient-to-r ${buttonGradient} text-white rounded-xl font-medium transition`}
-                    >
-                      View Full Record
-                    </button>
-                  </div>
-                  
-                  {/* Recent Visits */}
-                  {searchResult.recentVisits && searchResult.recentVisits.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-slate-200">
-                      <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Recent Visits</h4>
-                      <div className="space-y-3">
-                        {searchResult.recentVisits.slice(0, 3).map((visit) => (
-                          <div key={visit.id} className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100">
-                            <div>
-                              <p className="font-medium text-slate-900">{visit.diagnosis}</p>
-                              <p className="text-sm text-slate-500">{visit.hospital} • {visit.doctor}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                visit.status === "Completed" || visit.status === "Treated"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-amber-100 text-amber-700"
-                              }`}>
-                                {visit.status}
-                              </span>
-                              <p className="text-xs text-slate-400 mt-1">{visit.date}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-4 p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                  <p className="text-rose-700 font-medium">{searchError}</p>
                 </div>
               )}
             </div>
@@ -327,22 +606,14 @@ function HospitalDashboardWrapper({
             </div>
             <div className="p-6">
               {registerSuccess && (
-                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
-                  <div className="h-5 w-5 text-emerald-500 mt-0.5">✓</div>
-                  <div>
-                    <p className="text-emerald-700 font-medium">Patient Registered Successfully</p>
-                    <p className="text-emerald-600 text-sm">The patient has been added to the centralized database.</p>
-                  </div>
+                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <p className="text-emerald-700 font-medium">Patient Registered Successfully!</p>
                 </div>
               )}
 
               {registerError && (
-                <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
-                  <div className="h-5 w-5 text-rose-500 mt-0.5">⚠️</div>
-                  <div>
-                    <p className="text-rose-700 font-medium">Registration Failed</p>
-                    <p className="text-rose-600 text-sm">{registerError}</p>
-                  </div>
+                <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                  <p className="text-rose-700 font-medium">{registerError}</p>
                 </div>
               )}
 
@@ -448,29 +719,6 @@ function HospitalDashboardWrapper({
             </div>
           </div>
         )}
-
-        {/* Info Section */}
-        <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">About This Dashboard</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-slate-700 mb-2">Centralized Access</h4>
-              <p className="text-sm text-slate-500">
-                This dashboard provides access to the centralized healthcare record system. 
-                You can search for patients by their National Identification Number (NIN) 
-                and view their complete medical history from any participating hospital.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium text-slate-700 mb-2">Data Synchronization</h4>
-              <p className="text-sm text-slate-500">
-                All patient records are stored in a centralized database. Records added from 
-                this hospital will be visible to all other participating healthcare providers 
-                in the network.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
