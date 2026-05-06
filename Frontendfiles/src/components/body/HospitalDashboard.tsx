@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Search, PlusCircle, Shield, Activity } from "../ui/icons";
-import { createPatient, searchPatientByNIN, createRecord, fetchPatientById, type Patient, type RecordType } from "../../api/client";
+import {
+  createPatient,
+  searchPatientByNIN,
+  createRecord,
+  fetchPatientById,
+  type Patient,
+  type RecordType,
+} from "../../api/client";
+import { AIRecommendationTool } from "../ui/AIRecommendationTool";
 
 interface HospitalDashboardProps {
   hospitalName: string;
@@ -45,22 +53,24 @@ const RECORD_TYPES: { id: RecordType; label: string }[] = [
   { id: "procedure", label: "Procedure" },
 ];
 
-function HospitalDashboardWrapper({ 
-  hospitalName, 
-  primaryColor, 
+function HospitalDashboardWrapper({
+  hospitalName,
+  primaryColor,
   accentColor,
   bgGradient,
-  buttonGradient
+  buttonGradient,
 }: HospitalDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"search" | "register" | "patient">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "register" | "patient">(
+    "search",
+  );
   const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
   const [showAddRecord, setShowAddRecord] = useState(false);
-  
+
   // Search state
   const [searchNIN, setSearchNIN] = useState("");
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
-  
+
   // Registration form state
   const [formData, setFormData] = useState({
     nin: "",
@@ -70,7 +80,7 @@ function HospitalDashboardWrapper({
     lastName: "",
     dateOfBirth: "",
     bloodType: "",
-    allergies: ""
+    allergies: "",
   });
   const [registerError, setRegisterError] = useState("");
   const [registerSuccess, setRegisterSuccess] = useState(false);
@@ -92,19 +102,21 @@ function HospitalDashboardWrapper({
   const [savingRecord, setSavingRecord] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     if (!searchNIN.trim()) return;
-    
+
     setSearching(true);
     setSearchError("");
-    
+
     try {
       const result = await searchPatientByNIN(searchNIN.trim());
       if (result) {
         setViewingPatient(result);
         setActiveTab("patient");
       } else {
-        setSearchError("No patient found with this NIN. Please register the patient first.");
+        setSearchError(
+          "No patient found with this NIN. Please register the patient first.",
+        );
       }
     } catch {
       setSearchError("Error searching for patient. Please try again.");
@@ -147,7 +159,7 @@ function HospitalDashboardWrapper({
           lastName: "",
           dateOfBirth: "",
           bloodType: "",
-          allergies: ""
+          allergies: "",
         });
       } else {
         setRegisterError("Failed to create patient. Please try again.");
@@ -162,7 +174,7 @@ function HospitalDashboardWrapper({
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!viewingPatient) return;
-    
+
     setSavingRecord(true);
     try {
       const patientId = viewingPatient._id || viewingPatient.id;
@@ -174,29 +186,42 @@ function HospitalDashboardWrapper({
         notes: recordForm.notes,
         status: "Recorded",
         recordType,
-        labResults: recordForm.labResults ? Object.fromEntries(
-          recordForm.labResults
-            .split("\n")
-            .filter(Boolean)
-            .map((l) => {
-              const idx = l.indexOf(":");
-              return idx >= 0 ? [l.slice(0, idx).trim(), l.slice(idx + 1).trim()] : null;
-            })
-            .filter((a): a is [string, string] => !!a && a[0].length > 0)
-        ) : undefined,
-        prescriptions: recordForm.prescriptions ? recordForm.prescriptions.split("\n").filter(Boolean).map((line) => {
-          const [drug, dosage] = line.split(":").map((s) => s.trim());
-          return { drug: drug || "", dosage: dosage || "" };
-        }) : undefined,
+        labResults: recordForm.labResults
+          ? Object.fromEntries(
+              recordForm.labResults
+                .split("\n")
+                .filter(Boolean)
+                .map((l) => {
+                  const idx = l.indexOf(":");
+                  return idx >= 0
+                    ? [l.slice(0, idx).trim(), l.slice(idx + 1).trim()]
+                    : null;
+                })
+                .filter((a): a is [string, string] => !!a && a[0].length > 0),
+            )
+          : undefined,
+        prescriptions: recordForm.prescriptions
+          ? recordForm.prescriptions
+              .split("\n")
+              .filter(Boolean)
+              .map((line) => {
+                const [drug, dosage] = line.split(":").map((s) => s.trim());
+                return { drug: drug || "", dosage: dosage || "" };
+              })
+          : undefined,
         imagingFindings: recordForm.imagingFindings || undefined,
         vitals: {
           bloodPressure: recordForm.bloodPressure || undefined,
-          temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
-          heartRate: recordForm.heartRate ? Number(recordForm.heartRate) : undefined,
+          temperature: recordForm.temperature
+            ? Number(recordForm.temperature)
+            : undefined,
+          heartRate: recordForm.heartRate
+            ? Number(recordForm.heartRate)
+            : undefined,
           weight: recordForm.weight ? Number(recordForm.weight) : undefined,
         },
       });
-      
+
       if (record) {
         // Refresh patient data to show new record
         const updatedPatient = await fetchPatientById(patientId);
@@ -234,11 +259,15 @@ function HospitalDashboardWrapper({
     return (
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <header className={`bg-gradient-to-r ${bgGradient} text-white shadow-lg`}>
+        <header
+          className={`bg-gradient-to-r ${bgGradient} text-white shadow-lg`}
+        >
           <div className="max-w-6xl mx-auto px-6 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">{hospitalName}</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  {hospitalName}
+                </h1>
                 <p className="text-white/80 text-sm mt-1">Patient Record</p>
               </div>
               <button
@@ -256,16 +285,33 @@ function HospitalDashboardWrapper({
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
-                <div className={`h-16 w-16 rounded-full bg-${accentColor}-100 flex items-center justify-center text-2xl font-bold text-${accentColor}-600`}>
-                  {viewingPatient.firstName?.charAt(0)}{viewingPatient.lastName?.charAt(0)}
+                <div
+                  className={`h-16 w-16 rounded-full bg-${accentColor}-100 flex items-center justify-center text-2xl font-bold text-${accentColor}-600`}
+                >
+                  {viewingPatient.firstName?.charAt(0)}
+                  {viewingPatient.lastName?.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{viewingPatient.firstName} {viewingPatient.lastName}</h2>
-                  <p className="text-slate-500">NIN: {viewingPatient.nin || "Not provided"}</p>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    {viewingPatient.firstName} {viewingPatient.lastName}
+                  </h2>
+                  <p className="text-slate-500">
+                    NIN: {viewingPatient.nin || "Not provided"}
+                  </p>
                   <div className="flex gap-4 mt-1">
-                    <span className="text-sm text-slate-500">📞 {viewingPatient.phoneNumber}</span>
-                    {viewingPatient.email && <span className="text-sm text-slate-500">✉️ {viewingPatient.email}</span>}
-                    {viewingPatient.bloodType && <span className="text-sm text-slate-500">🩸 {viewingPatient.bloodType}</span>}
+                    <span className="text-sm text-slate-500">
+                      📞 {viewingPatient.phoneNumber}
+                    </span>
+                    {viewingPatient.email && (
+                      <span className="text-sm text-slate-500">
+                        ✉️ {viewingPatient.email}
+                      </span>
+                    )}
+                    {viewingPatient.bloodType && (
+                      <span className="text-sm text-slate-500">
+                        🩸 {viewingPatient.bloodType}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -282,16 +328,23 @@ function HospitalDashboardWrapper({
           {showAddRecord && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">Add Medical Record</h3>
-                <button onClick={() => setShowAddRecord(false)} className="text-slate-400 hover:text-slate-600">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Add Medical Record
+                </h3>
+                <button
+                  onClick={() => setShowAddRecord(false)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
                   ✕
                 </button>
               </div>
-              
+
               <form onSubmit={handleAddRecord} className="space-y-4">
                 {/* Record Type */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Record Type</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Record Type
+                  </label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {RECORD_TYPES.map((rt) => (
                       <button
@@ -313,12 +366,23 @@ function HospitalDashboardWrapper({
                 {/* Diagnosis */}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {recordType === "diagnosis" ? "Diagnosis / Reason" : recordType === "lab" ? "Test / Procedure" : recordType === "imaging" ? "Imaging Type" : "Title"}
+                    {recordType === "diagnosis"
+                      ? "Diagnosis / Reason"
+                      : recordType === "lab"
+                        ? "Test / Procedure"
+                        : recordType === "imaging"
+                          ? "Imaging Type"
+                          : "Title"}
                   </label>
                   <input
                     type="text"
                     value={recordForm.diagnosis}
-                    onChange={(e) => setRecordForm((f) => ({ ...f, diagnosis: e.target.value }))}
+                    onChange={(e) =>
+                      setRecordForm((f) => ({
+                        ...f,
+                        diagnosis: e.target.value,
+                      }))
+                    }
                     placeholder="e.g. Malaria, Routine Checkup"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-slate-400 focus:outline-none"
                     required
@@ -327,10 +391,14 @@ function HospitalDashboardWrapper({
 
                 {/* Notes */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Notes
+                  </label>
                   <textarea
                     value={recordForm.notes}
-                    onChange={(e) => setRecordForm((f) => ({ ...f, notes: e.target.value }))}
+                    onChange={(e) =>
+                      setRecordForm((f) => ({ ...f, notes: e.target.value }))
+                    }
                     placeholder="Additional notes..."
                     rows={2}
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-slate-400 focus:outline-none"
@@ -339,7 +407,9 @@ function HospitalDashboardWrapper({
 
                 {/* Vitals */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Vitals (optional)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    Vitals (optional)
+                  </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
@@ -348,7 +418,12 @@ function HospitalDashboardWrapper({
                       <input
                         type="text"
                         value={recordForm.bloodPressure}
-                        onChange={(e) => setRecordForm((f) => ({ ...f, bloodPressure: e.target.value }))}
+                        onChange={(e) =>
+                          setRecordForm((f) => ({
+                            ...f,
+                            bloodPressure: e.target.value,
+                          }))
+                        }
                         placeholder="120/80"
                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                       />
@@ -361,7 +436,12 @@ function HospitalDashboardWrapper({
                         type="number"
                         step="0.1"
                         value={recordForm.temperature}
-                        onChange={(e) => setRecordForm((f) => ({ ...f, temperature: e.target.value }))}
+                        onChange={(e) =>
+                          setRecordForm((f) => ({
+                            ...f,
+                            temperature: e.target.value,
+                          }))
+                        }
                         placeholder="36.5"
                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                       />
@@ -373,7 +453,12 @@ function HospitalDashboardWrapper({
                       <input
                         type="number"
                         value={recordForm.heartRate}
-                        onChange={(e) => setRecordForm((f) => ({ ...f, heartRate: e.target.value }))}
+                        onChange={(e) =>
+                          setRecordForm((f) => ({
+                            ...f,
+                            heartRate: e.target.value,
+                          }))
+                        }
                         placeholder="72"
                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                       />
@@ -386,7 +471,12 @@ function HospitalDashboardWrapper({
                         type="number"
                         step="0.1"
                         value={recordForm.weight}
-                        onChange={(e) => setRecordForm((f) => ({ ...f, weight: e.target.value }))}
+                        onChange={(e) =>
+                          setRecordForm((f) => ({
+                            ...f,
+                            weight: e.target.value,
+                          }))
+                        }
                         placeholder="70"
                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                       />
@@ -415,9 +505,12 @@ function HospitalDashboardWrapper({
           )}
 
           {/* Medical Records History */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Medical Records History</h3>
-            {!viewingPatient.recentVisits || viewingPatient.recentVisits.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              Medical Records History
+            </h3>
+            {!viewingPatient.recentVisits ||
+            viewingPatient.recentVisits.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
                 <p className="text-4xl mb-2 opacity-50">📋</p>
                 <p>No medical records found. Add the first record above.</p>
@@ -425,42 +518,73 @@ function HospitalDashboardWrapper({
             ) : (
               <div className="space-y-4">
                 {viewingPatient.recentVisits.map((visit) => (
-                  <div key={visit.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div
+                    key={visit.id}
+                    className="p-4 bg-slate-50 rounded-xl border border-slate-100"
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            visit.recordType === "diagnosis" ? "bg-blue-100 text-blue-700" :
-                            visit.recordType === "lab" ? "bg-purple-100 text-purple-700" :
-                            visit.recordType === "prescription" ? "bg-green-100 text-green-700" :
-                            visit.recordType === "imaging" ? "bg-orange-100 text-orange-700" :
-                            "bg-slate-100 text-slate-700"
-                          }`}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              visit.recordType === "diagnosis"
+                                ? "bg-blue-100 text-blue-700"
+                                : visit.recordType === "lab"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : visit.recordType === "prescription"
+                                    ? "bg-green-100 text-green-700"
+                                    : visit.recordType === "imaging"
+                                      ? "bg-orange-100 text-orange-700"
+                                      : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
                             {visit.recordType}
                           </span>
-                          <span className="text-sm font-medium text-slate-900">{visit.diagnosis}</span>
+                          <span className="text-sm font-medium text-slate-900">
+                            {visit.diagnosis}
+                          </span>
                         </div>
-                        <p className="text-sm text-slate-500">{visit.hospital} • {visit.doctor}</p>
-                        {visit.notes && <p className="text-sm text-slate-600 mt-2">{visit.notes}</p>}
+                        <p className="text-sm text-slate-500">
+                          {visit.hospital} • {visit.doctor}
+                        </p>
+                        {visit.notes && (
+                          <p className="text-sm text-slate-600 mt-2">
+                            {visit.notes}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          visit.status === "Completed" || visit.status === "Recorded" || visit.status === "Treated"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            visit.status === "Completed" ||
+                            visit.status === "Recorded" ||
+                            visit.status === "Treated"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
                           {visit.status}
                         </span>
-                        <p className="text-xs text-slate-400 mt-1">{visit.date}</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {visit.date}
+                        </p>
                       </div>
                     </div>
                     {/* Vitals display */}
                     {visit.vitals && (
                       <div className="mt-3 pt-3 border-t border-slate-200 flex gap-4 text-xs text-slate-500">
-                        {visit.vitals.bloodPressure && <span>BP: {visit.vitals.bloodPressure}</span>}
-                        {visit.vitals.temperature && <span>Temp: {visit.vitals.temperature}°C</span>}
-                        {visit.vitals.heartRate && <span>HR: {visit.vitals.heartRate} bpm</span>}
-                        {visit.vitals.weight && <span>Weight: {visit.vitals.weight} kg</span>}
+                        {visit.vitals.bloodPressure && (
+                          <span>BP: {visit.vitals.bloodPressure}</span>
+                        )}
+                        {visit.vitals.temperature && (
+                          <span>Temp: {visit.vitals.temperature}°C</span>
+                        )}
+                        {visit.vitals.heartRate && (
+                          <span>HR: {visit.vitals.heartRate} bpm</span>
+                        )}
+                        {visit.vitals.weight && (
+                          <span>Weight: {visit.vitals.weight} kg</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -468,6 +592,11 @@ function HospitalDashboardWrapper({
               </div>
             )}
           </div>
+
+          <AIRecommendationTool
+            patient={viewingPatient}
+            medicalRecords={viewingPatient.recentVisits!}
+          />
         </div>
       </div>
     );
@@ -481,8 +610,12 @@ function HospitalDashboardWrapper({
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">{hospitalName}</h1>
-              <p className="text-white/80 text-sm mt-1">Centralized Healthcare Record System</p>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {hospitalName}
+              </h1>
+              <p className="text-white/80 text-sm mt-1">
+                Centralized Healthcare Record System
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="bg-white/20 backdrop-blur rounded-xl px-4 py-2 text-sm">
@@ -500,7 +633,9 @@ function HospitalDashboardWrapper({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center gap-4">
-              <div className={`h-12 w-12 rounded-xl bg-${accentColor}-100 flex items-center justify-center`}>
+              <div
+                className={`h-12 w-12 rounded-xl bg-${accentColor}-100 flex items-center justify-center`}
+              >
                 <Search className={`h-6 w-6 text-${accentColor}-600`} />
               </div>
               <div>
@@ -565,8 +700,13 @@ function HospitalDashboardWrapper({
         {activeTab === "search" && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-900">Search Patient by NIN</h2>
-              <p className="text-sm text-slate-500 mt-1">Enter the patient's National Identification Number to retrieve their records</p>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Search Patient by NIN
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Enter the patient's National Identification Number to retrieve
+                their records
+              </p>
             </div>
             <div className="p-6">
               <form onSubmit={handleSearch} className="flex gap-4">
@@ -601,13 +741,19 @@ function HospitalDashboardWrapper({
         {activeTab === "register" && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-900">Register New Patient</h2>
-              <p className="text-sm text-slate-500 mt-1">Add a new patient to the centralized healthcare system</p>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Register New Patient
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Add a new patient to the centralized healthcare system
+              </p>
             </div>
             <div className="p-6">
               {registerSuccess && (
                 <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                  <p className="text-emerald-700 font-medium">Patient Registered Successfully!</p>
+                  <p className="text-emerald-700 font-medium">
+                    Patient Registered Successfully!
+                  </p>
                 </div>
               )}
 
@@ -617,72 +763,103 @@ function HospitalDashboardWrapper({
                 </div>
               )}
 
-              <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form
+                onSubmit={handleRegister}
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              >
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">First Name *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    First Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Last Name *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Last Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Phone Number *
+                  </label>
                   <input
                     type="tel"
                     required
                     value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phoneNumber: e.target.value })
+                    }
                     placeholder="+2348012345678"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">National ID (NIN)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    National ID (NIN)
+                  </label>
                   <input
                     type="text"
                     value={formData.nin}
-                    onChange={(e) => setFormData({ ...formData, nin: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nin: e.target.value })
+                    }
                     placeholder="11-digit NIN"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="patient@email.com"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Date of Birth</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Date of Birth
+                  </label>
                   <input
                     type="date"
                     value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dateOfBirth: e.target.value })
+                    }
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Blood Type</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Blood Type
+                  </label>
                   <select
                     value={formData.bloodType}
-                    onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bloodType: e.target.value })
+                    }
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   >
                     <option value="">Select Blood Type</option>
@@ -697,11 +874,15 @@ function HospitalDashboardWrapper({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Allergies</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Allergies
+                  </label>
                   <input
                     type="text"
                     value={formData.allergies}
-                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, allergies: e.target.value })
+                    }
                     placeholder="Penicillin, Sulfa (comma-separated)"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />

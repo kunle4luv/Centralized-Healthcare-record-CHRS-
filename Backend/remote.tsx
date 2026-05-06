@@ -1,1 +1,0 @@
-console.log("Joseph is a big fool");

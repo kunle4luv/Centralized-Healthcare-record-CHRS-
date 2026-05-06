@@ -60,7 +60,7 @@ export function PatientsScreen() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {patients.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
+                <tr key={p._id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {p.firstName} {p.lastName}
                   </td>
@@ -69,7 +69,7 @@ export function PatientsScreen() {
                   <td className="px-4 py-3 text-slate-600">{p.bloodType || "—"}</td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => navigate(`/dashboard/patient/${p.id}`)}
+                      onClick={() => navigate(`/dashboard/patient/${p._id}`)}
                       className="text-sm font-semibold text-emerald-700 hover:underline"
                     >
                       View Profile

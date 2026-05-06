@@ -10,12 +10,12 @@ type LoginScreenProps = {
 };
 
 export const LoginScreen = ({ onLogin, onBackHome }: LoginScreenProps) => {
-  const [role, setRole] = useState<UserRole>("patient");
+  // const [role, setRole] = useState<UserRole>("admin");
   const [id, setId] = useState("");
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onLogin(role, id || "User");
+    onLogin("admin", id || "User");
   };
 
   return (
@@ -39,7 +39,7 @@ export const LoginScreen = ({ onLogin, onBackHome }: LoginScreenProps) => {
         <form onSubmit={handleLogin} className="mt-8 space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              National ID / Staff ID
+              Admin Login
             </label>
             <input
               type="text"
@@ -50,7 +50,7 @@ export const LoginScreen = ({ onLogin, onBackHome }: LoginScreenProps) => {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Select Role (For Demo)
             </label>
@@ -63,7 +63,7 @@ export const LoginScreen = ({ onLogin, onBackHome }: LoginScreenProps) => {
               <option value="provider">Healthcare Provider (Doctor/Nurse)</option>
               <option value="admin">System Administrator</option>
             </select>
-          </div>
+          </div> */}
 
           <button
             type="submit"

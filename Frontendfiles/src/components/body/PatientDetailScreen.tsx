@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Activity, Download, Eye } from "lucide-react";
 import { fetchPatientById, type Patient, type RecordType, type Visit } from "../../api/client";
 import { useAuth } from "../../context/useAuth";
+import { AIRecommendationTool } from "../ui/AIRecommendationTool";
 
 const RECORD_TABS: { id: RecordType | "all"; label: string }[] = [
   { id: "all", label: "All Records" },
@@ -203,6 +204,14 @@ export function PatientDetailScreen() {
               )}
             </div>
           </div>
+
+          {/* AI Medical Assistant (Provider only) */}
+          {isProvider && (
+            <AIRecommendationTool
+              patient={patient}
+              medicalRecords={timeline}
+            />
+          )}
 
           {/* Add New Record (Provider only) */}
           {isProvider && (
